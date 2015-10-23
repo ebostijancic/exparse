@@ -1,9 +1,7 @@
 defmodule ExParse do
 
   def parse string do
-    r = Enum.reverse start string
-    :io.format "~p~n", [r]
-    r
+    Enum.reverse start string
   end
 
   def start << " ", rest :: binary >> do
@@ -28,7 +26,7 @@ defmodule ExParse do
   def whitespace rest, :in_start_element, context do
     attr_name rest, "", context
   end
-  def whitespace << "?>", rest :: binary >>, mode, context do
+  def whitespace << "?>", rest :: binary >>, _mode, context do
     content rest, "", context
   end
   def whitespace rest, mode, context do
@@ -49,17 +47,17 @@ defmodule ExParse do
   end
 
   def attr_name << "=", rest :: binary >>, name, context do
-    IO.puts "Attribute name #{name}"
     whitespace rest, :attr_value, [{:attr, name} | context]
   end
   def attr_name << " ", rest :: binary >>, name, context do
     IO.puts "Attribute name #{name}"
     whitespace rest, :equal_sign, [{:attr, name} | context]
   end
-  def attr_name << "?>", rest :: binary >>, name, context do
+  def attr_name << "?>", rest :: binary >>, _name, context do
+    # we should fail here?
     content rest, "", attr_pack context
   end
-  def attr_name << ">", rest :: binary >>, name, context do
+  def attr_name << ">", rest :: binary >>, _name, context do
     # we should fail here?
     content rest, "", attr_pack context
   end
@@ -90,20 +88,28 @@ defmodule ExParse do
     attr_value2 rest, << value :: binary, ch :: binary-size(1) >>, terminator, context
   end
 
-  def content "", text, context do
+  # Add text if it is not empty
+  defp add_text "", context do
+    context
+  end
+  defp add_text text, context do
     [{:text, text} | context]
   end
+
+  def content "", text, context do
+    add_text text, context
+  end
   def content << "</", rest :: binary >>, text, context do
-    end_element rest, "", [{:text, text} | context]
+    end_element rest, "", add_text(text, context)
   end
   def content << "<!--", rest :: binary >>, text, context do
-    comment rest, "", [{:text, text} | context]
+    comment rest, "", add_text(text, context)
   end
   def content << "<![CDATA[", rest :: binary >>, text, context do
-    cdata rest, "", [{:text, text} | context]
+    cdata rest, "", add_text(text, context)
   end
   def content << "<", rest :: binary >>, text, context do
-    start_element rest, "", [{:text, text} | context]
+    start_element rest, "", add_text(text, context)
   end
   def content << ch :: binary-size(1), rest :: binary >>, text, context do
     content rest, << text :: binary, ch :: binary-size(1) >>, context
@@ -119,7 +125,8 @@ defmodule ExParse do
     start_element rest, << name :: binary, ch :: binary-size(1) >>, context
   end
 
-  def end_element << ">", rest :: binary >>, name, context do
+  def end_element << ">", rest :: binary >>, _name, context do
+    # check if the element name is the same
     content rest, "", elem_pack context
   end
   def end_element << ch :: binary-size(1), rest :: binary >>, name, context do
