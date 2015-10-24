@@ -20,14 +20,14 @@ defmodule ExParse do
   def whitespace << "/>", rest :: binary >>, :in_start_element, context do
     content rest, "", attr_pack(context, true)
   end
+  def whitespace << "?>", rest :: binary >>, _mode, context do
+    content rest, "", attr_pack(context, true)
+  end
   def whitespace << ">", rest :: binary >>, :in_start_element, context do
     content rest, "", attr_pack context
   end
   def whitespace rest, :in_start_element, context do
     attr_name rest, "", context
-  end
-  def whitespace << "?>", rest :: binary >>, _mode, context do
-    content rest, "", context
   end
   def whitespace rest, mode, context do
     case mode do
@@ -50,7 +50,6 @@ defmodule ExParse do
     whitespace rest, :attr_value, [{:attr, name} | context]
   end
   def attr_name << " ", rest :: binary >>, name, context do
-    IO.puts "Attribute name #{name}"
     whitespace rest, :equal_sign, [{:attr, name} | context]
   end
   def attr_name << "?>", rest :: binary >>, _name, context do
@@ -115,6 +114,9 @@ defmodule ExParse do
     content rest, << text :: binary, ch :: binary-size(1) >>, context
   end
 
+  def start_element << "/>", rest :: binary >>, name, context do
+    content rest, "", attr_pack([{:elem, name} | context], true)
+  end
   def start_element << ">", rest :: binary >>, name, context do
     content rest, "", attr_pack [{:elem, name} | context]
   end
@@ -155,7 +157,13 @@ defmodule ExParse do
                                               end
     [{:elem, name} | rest2 ] = rest
     elem = case empty do
-             false -> :elem
+             false ->
+               case name do
+                 << "?", _ :: binary >> ->
+                   :empty_elem
+                 _ ->
+                   :elem
+               end
              true -> :empty_elem
            end
     [{elem, name, Enum.reverse attrs} | rest2]
