@@ -35,4 +35,14 @@ defmodule ExParseTest do
     assert {:elem, "country", [],
             [_, {:elem, "name", [], [{:text, "Spain"}]}, _]} = cspain
   end
+
+  test "speed" do
+    {ok, xml} = File.read "test/mondial.xml"
+    t1 = :os.system_time :micro_seconds
+    result = ExParse.parse xml
+    t2 = :os.system_time :micro_seconds
+
+    IO.puts "Microseconds #{t2 - t1}"
+  end
+
 end
